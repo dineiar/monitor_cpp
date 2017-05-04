@@ -16,6 +16,9 @@ int main(int argc, char* argv[]) {
     }
 
     std::string folder = argv[1];
+    //from http://stackoverflow.com/a/18027897/3136474
+    if (!folder.empty() && folder.back() != '/')
+        folder += '/'; //add trailing slash if not present
     std::string file_start = folder + "start";
     std::string file_stop = folder + "stop";
     std::cout << "Waiting for " << file_start << " to show up..." << std::endl;
@@ -33,6 +36,8 @@ int main(int argc, char* argv[]) {
                                 (std::istreambuf_iterator<char>()) );
             //start file must have the folder name for recording output
             trim(folder_out);
+            if (!folder_out.empty() && folder_out.back() != '/')
+                folder_out += '/'; //add trailing slash if not present
             folder_out = folder + folder_out;
             ifstart.close();
             remove(file_start.c_str());
@@ -44,49 +49,44 @@ int main(int argc, char* argv[]) {
             std::cout << "Riak " << (monitor.riak ? "online" : "offline") << std::endl;
             std::cout << "Started monitoring, output goes on " << folder_out << "..." << std::endl;
             
-            std::string cmd = "";
-
             int c = 0;
             while (true) {
                 c++;
                 std::cout << "[DEBUG] " << to_string(c) << " iteration on monitoring" << std::endl;
-                //performance de disco (I/O)
-                //CPU (geral)
-                //Memória
-                //Detectar SWAP 
+                //disk performance (I/O)
+                //CPU (general)
+                //Memory usage
+                //SWAP detection
 
                 //Get CPU and disk usage through iostat
-                cmd = "iostat -c -d -m -x -y";
                 //avg-cpu:  %user   %nice %system %iowait  %steal   %idle
                 //Device:  rrqm/s  wrqm/s  r/s  w/s  rMB/s  wMB/s  avgrq-sz  avgqu-sz  await  r_await  w_await  svctm  %util
-                monitor.mon_iostat.writeCmdResult(cmd, get_prefix());
+                monitor.mon_iostat.read_status();
 
                 //Get memory usage through free
-                cmd = "free -m -t";
                 // total  used  free  shared  buff/cache  available
                 // Mem, Swap, Total
-                monitor.mon_free.writeCmdResult(cmd, get_prefix());
+                monitor.mon_free.read_status();
 
                 //Get disk usage through df
-                cmd = "df -T -l";
                 // Filesystem  Type  Size  Used  Avail  Use%  Mounted on
-                monitor.mon_df.writeCmdResult(cmd, get_prefix());
+                monitor.mon_df.read_status();
 
                 //Get Redis info
                 if (monitor.redis) {
-                    cmd = "redis-cli info all";
                     //https://redis.io/commands/info
-                    monitor.mon_redis.writeCmdResult(cmd, get_prefix());
+                    monitor.mon_redis.read_status();
                 }
 
                 //Get Riak info
                 if (monitor.riak) {
-                    cmd = "sudo riak-admin status";
-                    //https://redis.io/commands/info
-                    monitor.mon_riak.writeCmdResult(cmd, get_prefix());
+                    //http://docs.basho.com/riak/kv/2.2.3/using/reference/statistics-monitoring/
+                    monitor.mon_riak.read_status();
                 }
 
-                sleep(5);
+                monitor.flush(); //flush all to disk
+
+                sleep(5); //@TODO 5 secs?
 
                 if (file_exists(file_stop)) {
                     remove(file_stop.c_str());

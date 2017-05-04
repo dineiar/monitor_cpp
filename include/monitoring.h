@@ -17,6 +17,7 @@ class Monitoring {
         
         void init(std::string out_folder);
         void detect();
+        void flush();
         void close();
 };
 
@@ -24,16 +25,16 @@ Monitoring::Monitoring() { };
 Monitoring::Monitoring(std::string out_folder) {
     redis = false;
     riak = false;
-    mon_iostat.init(out_folder + "iostat.txt");
-    mon_free.init(out_folder + "free.txt");
-    mon_df.init(out_folder + "df.txt");
+    mon_iostat.init(out_folder + "iostat.txt", "iostat -c -d -m -x -y");
+    mon_free.init(out_folder + "free.txt", "free -m -t");
+    mon_df.init(out_folder + "df.txt", "df -T -l");
     
     detect();
     if (redis) {
-        mon_redis.init(out_folder + "redis.txt");
+        mon_redis.init(out_folder + "redis.txt", "redis-cli info all");
     }
     if (riak) {
-        mon_riak.init(out_folder + "riak.txt");
+        mon_riak.init(out_folder + "riak.txt", "sudo riak-admin status");
     }
 };
 
@@ -55,6 +56,15 @@ void Monitoring::detect() {
         riak = true;
     }
 };
+
+//Free resources
+void Monitoring::flush() {
+    mon_iostat.flush();
+    mon_free.flush();
+    mon_df.flush();
+    mon_redis.flush();
+    mon_riak.flush();
+}
 
 //Free resources
 void Monitoring::close() {
