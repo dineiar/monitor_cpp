@@ -14,6 +14,12 @@
 #include <functional> 
 #include <cctype>
 #include <locale>
+//for split
+// #include <iostream>
+// #include <string>
+#include <sstream>
+// #include <algorithm>
+#include <iterator>
 
 using namespace std;
 
@@ -52,6 +58,22 @@ static inline void rtrim(std::string &s) {
 static inline void trim(std::string &s) {
     ltrim(s);
     rtrim(s);
+}
+
+//adapted from http://stackoverflow.com/a/236803/3136474
+template<typename Out>
+void splitNl(const std::string &s, Out result) {
+    std::stringstream ss;
+    ss.str(s);
+    std::string item;
+    while (std::getline(ss, item)) {
+        *(result++) = item;
+    }
+}
+std::vector<std::string> splitNl(const std::string &s) {
+    std::vector<std::string> elems;
+    splitNl(s, std::back_inserter(elems));
+    return elems;
 }
 
 #endif

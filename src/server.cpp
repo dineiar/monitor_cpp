@@ -11,7 +11,7 @@ using namespace std;
 int main(int argc, char* argv[]) {
     
     if (argc < 2) {
-        cerr << "Usage: " << argv[0] << " FOLDER" << std::endl;
+        cerr << "Usage: " << argv[0] << " FOLDER_NFS" << std::endl;
         return 1;
     }
 
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     int i = 0;
     while (true) {
         i++;
-        std::cout << "[DEBUG] " << to_string(i) << " iteration on file_start check" << std::endl;
+        std::cout << to_string(i) << " seconds waiting for start file" << std::endl;
         ifstream ifstart(file_start);
         if (ifstart.good()) {
             std::cout << "Start file detected, will monitor until " << file_stop << " show up." << std::endl;
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
             int c = 0;
             while (true) {
                 c++;
-                std::cout << "[DEBUG] " << to_string(c) << " iteration on monitoring" << std::endl;
+                std::cout << to_string(c) << " monitoring iteration" << std::endl;
                 //disk performance (I/O)
                 //CPU (general)
                 //Memory usage
