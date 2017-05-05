@@ -72,21 +72,24 @@ int main(int argc, char* argv[]) {
                 // Filesystem  Type  Size  Used  Avail  Use%  Mounted on
                 monitor.mon_df.read_status();
 
-                //Get Redis info
-                if (monitor.redis) {
-                    //https://redis.io/commands/info
-                    monitor.mon_redis.read_status();
-                }
+                //Only gets DB info each 5 iterations
+                if (c % 5 == 0) {
+                    //Get Redis info
+                    if (monitor.redis) {
+                        //https://redis.io/commands/info
+                        monitor.mon_redis.read_status();
+                    }
 
-                //Get Riak info
-                if (monitor.riak) {
-                    //http://docs.basho.com/riak/kv/2.2.3/using/reference/statistics-monitoring/
-                    monitor.mon_riak.read_status();
+                    //Get Riak info
+                    if (monitor.riak) {
+                        //http://docs.basho.com/riak/kv/2.2.3/using/reference/statistics-monitoring/
+                        monitor.mon_riak.read_status();
+                    }
                 }
 
                 monitor.flush(); //flush all to disk
 
-                sleep(5); //@TODO 5 secs?
+                sleep(3); //@TODO 3 secs?
 
                 if (file_exists(file_stop)) {
                     remove(file_stop.c_str());

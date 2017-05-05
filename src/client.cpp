@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
                 fstream << "\n"; //this file is not readed
                 fstream.close(); //flushes
 
-                sleep(3 * 5); //== 3 x sleep time on monitoring loop on server.cpp
+                sleep(3 * 3); //== 3 x sleep time on monitoring loop on server.cpp
 
                 std::string cmd = "mv " + folder_nfs + file + " " + folder_out;
                 std::cout << "Getting output... " << cmd << std::endl;
