@@ -19,6 +19,7 @@ int main(int argc, char* argv[]) {
     //from http://stackoverflow.com/a/18027897/3136474
     if (!folder.empty() && folder.back() != '/')
         folder += '/'; //add trailing slash if not present
+    std::string file_cmd = folder + "exec";
     std::string file_start = folder + "start";
     std::string file_stop = folder + "stop";
     std::cout << "Waiting for " << file_start << " to show up..." << std::endl;
@@ -26,10 +27,35 @@ int main(int argc, char* argv[]) {
     int i = 0;
     while (true) {
         i++;
-        std::cout << to_string(i) << " seconds waiting for start file" << std::endl;
-        ifstream ifstart(file_start);
+        if (i % 10 == 0) { //echo each 10s
+            std::cout << to_string(i) << " seconds waiting for start file" << std::endl;
+        }
+        std::ifstream ifcmd(file_cmd);
+        if (ifcmd.good()) {
+            std::cout << "Command file " << file_cmd << " detected, reading command" << std::endl;
+            
+            //from http://stackoverflow.com/a/2912614/3136474
+            std::string command( (std::istreambuf_iterator<char>(ifcmd) ),
+                                (std::istreambuf_iterator<char>()) );
+            
+            std::cout << "Executing command '" << command << "'" << std::endl;
+
+            // Runs command
+            std::string cmd_output = exec(command.c_str());
+
+            // Writes command output
+            std::string filename = folder + "output";
+            std::ofstream fstream;
+            fstream.open(filename);
+            fstream << cmd_output;
+            fstream.close();
+
+            std::cout << "Executing command '" << command << "'" << std::endl;
+        }
+
+        std::ifstream ifstart(file_start);
         if (ifstart.good()) {
-            std::cout << "Start file detected, will monitor until " << file_stop << " show up." << std::endl;
+            std::cout << "Start file detected, will monitor until " << file_stop << " show up" << std::endl;
             
             //from http://stackoverflow.com/a/2912614/3136474
             std::string folder_out( (std::istreambuf_iterator<char>(ifstart) ),
