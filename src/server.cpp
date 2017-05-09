@@ -51,6 +51,8 @@ int main(int argc, char* argv[]) {
             fstream.close();
 
             std::cout << "Executing command '" << command << "'" << std::endl;
+        } else {
+            ifcmd.close();
         }
 
         std::ifstream ifstart(file_start);
