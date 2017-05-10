@@ -27,9 +27,14 @@ int main(int argc, char* argv[]) {
     int i = 0;
     while (true) {
         i++;
+        std::cout << ".";
         if (i % 10 == 0) { //echo each 10s
             std::cout << to_string(i) << " seconds waiting for start file" << std::endl;
         }
+
+        std::string cmd = "ls " + folder;
+        exec(cmd.c_str());
+
         std::ifstream ifcmd(file_cmd);
         if (ifcmd.good()) {
             std::cout << "Command file " << file_cmd << " detected, reading command" << std::endl;
@@ -118,6 +123,9 @@ int main(int argc, char* argv[]) {
                 monitor.flush(); //flush all to disk
 
                 sleep(3); //@TODO 3 secs?
+
+                std::string cmd = "ls " + folder;
+                exec(cmd.c_str());
 
                 if (file_exists(file_stop)) {
                     remove(file_stop.c_str());
