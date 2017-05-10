@@ -35,25 +35,26 @@ int main(int argc, char* argv[]) {
     mkdir(folder_out.c_str(), 7777);
     std::cout << "Checking files on " << folder << std::endl;
 
-    std::string cmd = "ls " + folder;
-    std::string ls_output = exec(cmd.c_str());
+    std::string auxCmd = "ls " + folder;
+    std::string ls_output = exec(auxCmd.c_str());
     trim(ls_output);
     if (!ls_output.empty()) {
         std::vector<std::string> files = splitNl(ls_output);
         std::cout << files.size() << " file(s) found" << std::endl;
 
         for(auto const& file : files) {
-            // Read command from file
+            // Read commands from file
             std::string full_filename = folder + file;
             ifstream ifstart(full_filename);
             std::string command( (std::istreambuf_iterator<char>(ifstart) ),
                                 (std::istreambuf_iterator<char>()) );
+            trim(command);
             ifstart.close();
             remove(full_filename.c_str()); //Delete file
+            std::vector<std::string> commands = splitNl(command);
+            std::cout << commands.size() << " commands found in file " << file << std::endl;
 
-            trim(command);
-
-            // Read clear command from file
+            // Read clear commands from file
             full_filename = folder + ".clear" + file;
             ifstream ifclear(full_filename);
             std::vector<std::string> clearcommands;
@@ -73,7 +74,7 @@ int main(int argc, char* argv[]) {
             ifclear.close();
             remove(full_filename.c_str()); //Delete file
             
-            std::cout << "Starting " << file << " command: '" << command << "'" << std::endl;
+            std::cout << "Starting " << file << " commands:" << std::endl;
 
             for (int iter = 1; iter < iterations; iter++) {
                 std::string run_id = file; //the name of the file is the name of the folder created with output
@@ -90,8 +91,12 @@ int main(int argc, char* argv[]) {
                 // Waits for server to start monitoring
                 sleep(1); //== sleep time on file check on server.cpp
 
-                // Runs command
-                std::string cmd_output = exec(command.c_str());
+                // Run commands
+                std::string cmds_all_output = "";
+                for(auto const& cmdFile : commands) {
+                    std::string cmd_output = exec(cmdFile.c_str());
+                    cmds_all_output += "\n\n" + cmd_output;
+                }
 
                 std::cout << "Command executed, stopping monitoring..." << std::endl;
                 // Create stop file for server-side script
@@ -109,7 +114,7 @@ int main(int argc, char* argv[]) {
                 // Writes command output as well
                 filename = folder_out + run_id + "/client_output.txt";
                 fstream.open(filename);
-                fstream << cmd_output;
+                fstream << cmds_all_output;
                 fstream.close();
 
                 if (iterations > 1) {
@@ -134,8 +139,8 @@ int main(int argc, char* argv[]) {
                             out_wait++;
                             
                             // Don't notice new files in NFS folder if we don't touch the folder explicitly
-                            std::string cmd = "ls " + folder_nfs;
-                            exec(cmd.c_str());
+                            std::string cmdTmp = "ls " + folder_nfs;
+                            exec(cmdTmp.c_str());
                             
                             std::string file_output = folder_nfs + "output";
                             std::ifstream ifcmdoutput(file_output);
