@@ -6,13 +6,23 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
     
-    if (argc < 2) {
-        cerr << "Usage: " << argv[0] << " FOLDER FOLDER_NFS" << std::endl;
+    if (argc < 3) {
+        cerr << "Usage: " << argv[0] << " FOLDER FOLDER_NFS [ITERATIONS]" << std::endl;
         return 1;
     }
 
     std::string folder = argv[1];
     std::string folder_nfs = argv[2];
+    int iterations = 1;
+    if (argc > 3) {
+        istringstream ss(argv[3]);
+        if (!(ss >> iterations)) {
+            std::cout << "Invalid iterations number " << argv[3] << ". Ignoring, will run 1 iteration." << std::endl;
+            iterations = 1; // Better make sure
+        } else {
+            std::cout << "Will run " << to_string(iterations) << " iterations" << std::endl;
+        }
+    }
     //from http://stackoverflow.com/a/18027897/3136474
     if (!folder.empty() && folder.back() != '/')
         folder += '/'; //add trailing slash if not present
@@ -23,38 +33,58 @@ int main(int argc, char* argv[]) {
     std::cout << "NFS mounted on " << folder_nfs << std::endl;
     std::cout << "Creating folder for output on " << folder_out << std::endl;
     mkdir(folder_out.c_str(), 7777);
-    std::cout << "Monitoring files on " << folder << "..." << std::endl;
+    std::cout << "Checking files on " << folder << std::endl;
 
-    int i = 0;
-    while (true) {
-        i++;
-        std::cout << to_string(i) << " iteration on folder monitoring" << std::endl;
+    std::string cmd = "ls " + folder;
+    std::string ls_output = exec(cmd.c_str());
+    trim(ls_output);
+    if (!ls_output.empty()) {
+        std::vector<std::string> files = splitNl(ls_output);
+        std::cout << files.size() << " file(s) found" << std::endl;
 
-        std::string cmd = "ls " + folder;
-        std::string ls_output = exec(cmd.c_str());
-        trim(ls_output);
-        if (!ls_output.empty()) {
-            std::vector<std::string> files = splitNl(ls_output);
-            std::cout << files.size() << " file(s) found" << std::endl;
+        for(auto const& file : files) {
+            // Read command from file
+            std::string full_filename = folder + file;
+            ifstream ifstart(full_filename);
+            std::string command( (std::istreambuf_iterator<char>(ifstart) ),
+                                (std::istreambuf_iterator<char>()) );
+            ifstart.close();
+            remove(full_filename.c_str()); //Delete file
 
-            for(auto const& file : files) {
-                // Read command from file
-                std::string full_filename = folder + file;
-                ifstream ifstart(full_filename);
-                std::string command( (std::istreambuf_iterator<char>(ifstart) ),
+            trim(command);
+
+            // Read clear command from file
+            full_filename = folder + ".clear" + file;
+            ifstream ifclear(full_filename);
+            std::vector<std::string> clearcommands;
+            if (ifclear.good()) {
+                std::string tmpcommand( (std::istreambuf_iterator<char>(ifclear) ),
                                     (std::istreambuf_iterator<char>()) );
-                ifstart.close();
-                trim(command);
-                
-                std::cout << "Starting " << file << " command: '" << command << "'" << std::endl;
+                std::string clearcommand = tmpcommand;
+                trim(clearcommand);
 
-                remove(full_filename.c_str()); //Delete file
+                if (!clearcommand.empty()) {
+                    clearcommands = splitNl(clearcommand);
+                    std::cout << clearcommands.size() << " clear commands found" << std::endl;
+                }
+            } else {
+                std::cout << "No clear command detected in " << full_filename << std::endl;
+            }
+            ifclear.close();
+            remove(full_filename.c_str()); //Delete file
+            
+            std::cout << "Starting " << file << " command: '" << command << "'" << std::endl;
 
+            for (int iter = 1; iter < iterations; iter++) {
+                std::string run_id = file; //the name of the file is the name of the folder created with output
+                if (iterations > 1) {
+                    run_id += "_" + to_string(iter);
+                }
                 // Create start file for server-side script
                 std::string filename = folder_nfs + "start";
                 std::ofstream fstream;
                 fstream.open(filename);
-                fstream << file; //the name of the file is the name of the folder created with output
+                fstream << run_id;
                 fstream.close(); //flushes
                 std::cout << "Monitoring triggered" << std::endl;
                 // Waits for server to start monitoring
@@ -72,22 +102,67 @@ int main(int argc, char* argv[]) {
 
                 sleep(3 * 3); //== 3 x sleep time on monitoring loop on server.cpp
 
-                std::string cmd = "mv " + folder_nfs + file + " " + folder_out;
+                std::string cmd = "mv " + folder_nfs + run_id + " " + folder_out;
                 std::cout << "Getting output... " << cmd << std::endl;
                 exec(cmd.c_str());
 
                 // Writes command output as well
-                filename = folder_out + file + "/client_output.txt";
+                filename = folder_out + run_id + "/client_output.txt";
                 fstream.open(filename);
                 fstream << cmd_output;
                 fstream.close();
 
-                std::cout << file << " done. Output on " << folder_out << file << std::endl;
-            }
+                if (iterations > 1) {
+                    std::cout << "Iteration " << to_string(iter) << " of ";
+                }
+                std::cout << file << " done. Output on " << folder_out << run_id << std::endl;
 
-            i = 0; // Reset seconds counter
+                if (clearcommands.size() > 0) {
+                    std::cout << "Executing clear commands" << std::endl;
+                    for(auto const& clearcmd : clearcommands) {
+                        std::cout << "Executing '" << clearcmd << "'" << std::endl;
+
+                        // Tells server to execute this command
+                        std::string file_cmd = folder_nfs + "exec";
+                        filename = file_cmd;
+                        fstream.open(filename);
+                        fstream << clearcmd;
+                        fstream.close(); //flushes
+
+                        int out_wait = 0;
+                        while (true) {
+                            out_wait++;
+                            
+                            // Don't notice new files in NFS folder if we don't touch the folder explicitly
+                            std::string cmd = "ls " + folder_nfs;
+                            exec(cmd.c_str());
+                            
+                            std::string file_output = folder_nfs + "output";
+                            std::ifstream ifcmdoutput(file_output);
+                            if (ifcmdoutput.good()) {
+                                std::string clearoutput( (std::istreambuf_iterator<char>(ifcmdoutput) ),
+                                                    (std::istreambuf_iterator<char>()) );
+                                std::cout << "Got output: " << clearoutput << std::endl;
+                                ifcmdoutput.close();
+                                remove(file_output.c_str());
+
+                                break;
+                            } else {
+                                ifcmdoutput.close();
+                            }
+
+                            if (out_wait >= 600) {
+                                std::cout << "10 minutes and no output so far. Going to next command." << std::endl;
+                                break;
+                            }
+                            sleep(1);
+                        }
+                    }
+                }
+            } //for iterations loop
         }
-
-        sleep(1);
+    } else {
+        std::cout << "No files on " << folder << ". Stopping." << std::endl;
     }
+
 }

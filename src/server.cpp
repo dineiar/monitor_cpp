@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
     int i = 0;
     while (true) {
         i++;
-        std::cout << ".";
+        std::cout << "." << std::flush;
         if (i % 10 == 0) { //echo each 10s
             std::cout << to_string(i) << " seconds waiting for start file" << std::endl;
         }
@@ -55,7 +55,9 @@ int main(int argc, char* argv[]) {
             fstream << cmd_output;
             fstream.close();
 
-            std::cout << "Executing command '" << command << "'" << std::endl;
+            std::cout << "Command executed, removing " << file_cmd << " file." << std::endl;
+            ifcmd.close();
+            remove(file_cmd.c_str());
         } else {
             ifcmd.close();
         }
