@@ -30,6 +30,11 @@ int main(int argc, char* argv[]) {
         if (i % 10 == 0) { //echo each 10s
             std::cout << to_string(i) << " seconds waiting for start file" << std::endl;
         }
+
+        std::string cmd = "ls " + folder;
+        std::string ls_output = exec(cmd.c_str());
+        std::cout << ls_output << std::endl;
+        
         std::ifstream ifcmd(file_cmd);
         if (ifcmd.good()) {
             std::cout << "Command file " << file_cmd << " detected, but it should not be" << std::endl;
