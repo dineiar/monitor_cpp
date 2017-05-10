@@ -32,9 +32,8 @@ int main(int argc, char* argv[]) {
         }
 
         std::string cmd = "ls " + folder;
-        std::string ls_output = exec(cmd.c_str());
-        std::cout << ls_output << std::endl;
-        
+        exec(cmd.c_str());
+
         std::ifstream ifcmd(file_cmd);
         if (ifcmd.good()) {
             std::cout << "Command file " << file_cmd << " detected, but it should not be" << std::endl;
@@ -54,11 +53,15 @@ int main(int argc, char* argv[]) {
                     std::cout << to_string(c) << " monitoring iteration" << std::endl;
                 }
 
+                std::string cmd = "ls " + folder;
+                exec(cmd.c_str());
                 if (file_exists(file_stop)) {
                     remove(file_stop.c_str());
                     std::cout << "Stop file detected, stopping." << std::endl;
                     break;
                 }
+
+                sleep(1);
             }
 
             std::cout << "Stopped. Waiting for " << file_start << " to show up again..." << std::endl;
