@@ -24,8 +24,9 @@ int main(int argc, char* argv[]) {
     // Create start file for server-side script
     std::ofstream fstream;
     fstream.open(file_start);
-    fstream << "file"; //the name of the file is the name of the folder created with output
-    fstream.close(); //flushes
+    fstream << "file" << std::endl; //the name of the file is the name of the folder created with output
+    fstream.flush();
+    fstream.close();
     std::cout << "File created" << std::endl;
     // Waits for server to start monitoring
     sleep(1); //== sleep time on file check on server.cpp
@@ -33,7 +34,7 @@ int main(int argc, char* argv[]) {
     sleep(10);
 
     fstream.open(file_stop);
-    fstream << "\n"; //this file is not readed
+    fstream << "\n" << std::endl; //this file is not readed
     fstream.close(); //flushes
 
     sleep(1);
