@@ -29,6 +29,10 @@ int main(int argc, char* argv[]) {
     if (!folder_nfs.empty() && folder_nfs.back() != '/')
         folder_nfs += '/'; //add trailing slash if not present
     std::string folder_out = folder + ".out/";
+    std::string file_cmd = folder_nfs + "exec";
+    std::string file_start = folder_nfs + "start";
+    std::string file_stop = folder_nfs + "stop";
+    std::ofstream fstream;
 
     std::cout << "NFS mounted on " << folder_nfs << std::endl;
     std::cout << "Creating folder for output on " << folder_out << std::endl;
@@ -54,6 +58,26 @@ int main(int argc, char* argv[]) {
             std::vector<std::string> commands = splitNl(command);
             std::cout << commands.size() << " commands found in file " << file << std::endl;
 
+            // Read pre-benchmark commands from file
+            full_filename = folder + ".pre" + file;
+            ifstream ifpre(full_filename);
+            std::vector<std::string> precommands;
+            if (ifpre.good()) {
+                std::string tmpcommand( (std::istreambuf_iterator<char>(ifpre) ),
+                                    (std::istreambuf_iterator<char>()) );
+                std::string precommand = tmpcommand;
+                trim(precommand);
+
+                if (!precommand.empty()) {
+                    precommands = splitNl(precommand);
+                    std::cout << precommands.size() << " pre-benchmark commands found" << std::endl;
+                }
+            } else {
+                std::cout << "No pre command detected in " << full_filename << std::endl;
+            }
+            ifpre.close();
+            remove(full_filename.c_str()); //Delete file
+
             // Read clear commands from file
             full_filename = folder + ".clear" + file;
             ifstream ifclear(full_filename);
@@ -76,20 +100,66 @@ int main(int argc, char* argv[]) {
             
             std::cout << "Starting " << file << " commands:" << std::endl;
 
-            for (int iter = 1; iter < iterations; iter++) {
+            for (int iter = 1; iter <= iterations; iter++) {
                 std::string run_id = file; //the name of the file is the name of the folder created with output
                 if (iterations > 1) {
                     run_id += "_" + to_string(iter);
                 }
-                // Create start file for server-side script
-                std::string filename = folder_nfs + "start";
-                std::ofstream fstream;
-                fstream.open(filename);
-                fstream << run_id;
-                fstream.close(); //flushes
-                std::cout << "Monitoring triggered" << std::endl;
-                // Waits for server to start monitoring
-                sleep(1); //== sleep time on file check on server.cpp
+
+                if (precommands.size() > 0) {
+                    std::cout << "Executing pre-benchmark commands" << std::endl;
+                    for(auto const& precmd : precommands) {
+                        std::cout << "Executing '" << precmd << "'" << std::endl;
+
+                        // Pre commands are executed client side
+                        std::string cmd_output = exec(precmd.c_str());
+                        std::cout << "Output: " << cmd_output << std::endl;
+
+                        // // Tells server to execute this command
+                        // fstream.open(file_cmd);
+                        // fstream << precmd;
+                        // fstream.close(); //flushes
+
+                        // int out_wait = 0;
+                        // while (true) {
+                        //     out_wait++;
+                            
+                        //     // Don't notice new files in NFS folder if we don't touch the folder explicitly
+                        //     std::string cmdTmp = "ls " + folder_nfs;
+                        //     exec(cmdTmp.c_str());
+                            
+                        //     std::string file_output = folder_nfs + "output";
+                        //     std::ifstream ifcmdoutput(file_output);
+                        //     if (ifcmdoutput.good()) {
+                        //         std::string preoutput( (std::istreambuf_iterator<char>(ifcmdoutput) ),
+                        //                             (std::istreambuf_iterator<char>()) );
+                        //         std::cout << "Got output: " << preoutput << std::endl;
+                        //         ifcmdoutput.close();
+                        //         remove(file_output.c_str());
+
+                        //         break;
+                        //     } else {
+                        //         ifcmdoutput.close();
+                        //     }
+
+                        //     if (out_wait >= 600) {
+                        //         std::cout << "10 minutes and no output so far. Going to next command." << std::endl;
+                        //         break;
+                        //     }
+                        //     sleep(1);
+                        // }
+                    }
+                }
+
+                if (iter == 1) {
+                    // Create start file for server-side script
+                    fstream.open(file_start);
+                    fstream << file;
+                    fstream.close(); //flushes
+                    std::cout << "Monitoring triggered" << std::endl;
+                    // Waits for server to start monitoring
+                    sleep(1); //== sleep time on file check on server.cpp
+                }
 
                 // Run commands
                 std::string cmds_all_output = "";
@@ -98,22 +168,24 @@ int main(int argc, char* argv[]) {
                     cmds_all_output += "\n\n" + cmd_output;
                 }
 
-                std::cout << "Command executed, stopping monitoring..." << std::endl;
-                // Create stop file for server-side script
-                filename = folder_nfs + "stop";
-                fstream.open(filename);
-                fstream << "\n"; //this file is not readed
-                fstream.close(); //flushes
+                if (iter == 1) {
+                    std::cout << "Command executed, stopping monitoring..." << std::endl;
+                    // Create stop file for server-side script
+                    fstream.open(file_stop);
+                    fstream << "\n"; //this file is not readed
+                    fstream.close(); //flushes
+                }
 
                 sleep(3 * 3); //== 3 x sleep time on monitoring loop on server.cpp
 
-                std::string cmd = "mv " + folder_nfs + run_id + " " + folder_out;
+                std::string cmd = "mv " + folder_nfs + file + " " + folder_out;
                 std::cout << "Getting output... " << cmd << std::endl;
                 exec(cmd.c_str());
 
                 // Writes command output as well
-                filename = folder_out + run_id + "/client_output.txt";
-                fstream.open(filename);
+                std::string filename = folder_out + file + "_client_output.txt";
+                // appends all output on a single file
+                fstream.open(filename, std::ofstream::out | std::ofstream::app);
                 fstream << cmds_all_output;
                 fstream.close();
 
@@ -128,9 +200,7 @@ int main(int argc, char* argv[]) {
                         std::cout << "Executing '" << clearcmd << "'" << std::endl;
 
                         // Tells server to execute this command
-                        std::string file_cmd = folder_nfs + "exec";
-                        filename = file_cmd;
-                        fstream.open(filename);
+                        fstream.open(file_cmd);
                         fstream << clearcmd;
                         fstream.close(); //flushes
 
