@@ -151,15 +151,16 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
-                if (iter == 1) {
+                //Monitor all iterations again
+                // if (iter == 1) {
                     // Create start file for server-side script
                     fstream.open(file_start);
-                    fstream << file;
+                    fstream << run_id;
                     fstream.close(); //flushes
                     std::cout << "Monitoring triggered" << std::endl;
                     // Waits for server to start monitoring
                     sleep(1); //== sleep time on file check on server.cpp
-                }
+                // }
 
                 // Run commands
                 std::string cmds_all_output = "";
@@ -168,17 +169,17 @@ int main(int argc, char* argv[]) {
                     cmds_all_output += "\n\n" + cmd_output;
                 }
 
-                if (iter == 1) {
+                // if (iter == 1) {
                     std::cout << "Command executed, stopping monitoring..." << std::endl;
                     // Create stop file for server-side script
                     fstream.open(file_stop);
                     fstream << "\n"; //this file is not readed
                     fstream.close(); //flushes
-                }
+                // }
 
                 sleep(3 * 3); //== 3 x sleep time on monitoring loop on server.cpp
 
-                std::string cmd = "mv " + folder_nfs + file + " " + folder_out;
+                std::string cmd = "mv " + folder_nfs + run_id + " " + folder_out;
                 std::cout << "Getting output... " << cmd << std::endl;
                 exec(cmd.c_str());
 
