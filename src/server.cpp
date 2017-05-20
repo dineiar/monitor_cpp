@@ -45,6 +45,10 @@ int main(int argc, char* argv[]) {
             
             std::cout << "Executing command '" << command << "'" << std::endl;
 
+            std::cout << "Command executed, removing " << file_cmd << " file." << std::endl;
+            ifcmd.close();
+            remove(file_cmd.c_str());
+            
             // Runs command
             std::string cmd_output = exec(command.c_str());
 
@@ -55,9 +59,6 @@ int main(int argc, char* argv[]) {
             fstream << cmd_output;
             fstream.close();
 
-            std::cout << "Command executed, removing " << file_cmd << " file." << std::endl;
-            ifcmd.close();
-            remove(file_cmd.c_str());
         } else {
             ifcmd.close();
         }
